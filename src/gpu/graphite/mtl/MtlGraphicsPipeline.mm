@@ -394,20 +394,22 @@ sk_sp<MtlGraphicsPipeline> MtlGraphicsPipeline::Make(const MtlSharedContext* sha
     NSString* fsFuncName = [NSString stringWithUTF8String: std::get<1>(fragmentMain).c_str()];
 
     (*psoDescriptor).label = labelName;
-    (*psoDescriptor).vertexFunction = [vsLibrary newFunctionWithName: vsFuncName];
-    (*psoDescriptor).fragmentFunction = [fsLibrary newFunctionWithName: fsFuncName];
+    sk_cfp<id<MTLFunction>> vertexFunction([vsLibrary newFunctionWithName: vsFuncName]);
+    sk_cfp<id<MTLFunction>> fragmentFunction([fsLibrary newFunctionWithName: fsFuncName]);
+    (*psoDescriptor).vertexFunction = vertexFunction.get();
+    (*psoDescriptor).fragmentFunction = fragmentFunction.get();
 
-    // TODO: I *think* this gets cleaned up by the pipelineDescriptor?
-    (*psoDescriptor).vertexDescriptor = create_vertex_descriptor(appendStepFunc,
-                                                                 staticAttrs,
-                                                                 appendAttrs);
+    sk_cfp<MTLVertexDescriptor*> vertexDescriptor(create_vertex_descriptor(appendStepFunc,
+                                                                        staticAttrs,
+                                                                        appendAttrs));
+    (*psoDescriptor).vertexDescriptor = vertexDescriptor.get();
 
     TextureFormat colorFormat = renderPassDesc.fColorAttachment.fFormat;
     TextureFormat dsFormat = renderPassDesc.fDepthStencilAttachment.fFormat;
 
-    auto mtlColorAttachment =
-            create_color_attachment(TextureFormatToMTLPixelFormat(colorFormat), blendInfo);
-    (*psoDescriptor).colorAttachments[0] = mtlColorAttachment;
+    sk_cfp<MTLRenderPipelineColorAttachmentDescriptor*> mtlColorAttachment(
+            create_color_attachment(TextureFormatToMTLPixelFormat(colorFormat), blendInfo));
+    (*psoDescriptor).colorAttachments[0] = mtlColorAttachment.get();
 
     (*psoDescriptor).rasterSampleCount = (uint8_t) renderPassDesc.fColorAttachment.fSampleCount;
 
